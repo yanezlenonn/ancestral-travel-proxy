@@ -19,48 +19,39 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
-// Global daily counter (simple in-memory counter)
+// Global daily counter
 let dailyCounter = 0;
 const DAILY_LIMIT = 1000;
 
-// Reset daily counter at midnight (simple implementation)
+// Reset daily counter at midnight
 setInterval(() => {
   const now = new Date();
   if (now.getHours() === 0 && now.getMinutes() === 0) {
     dailyCounter = 0;
     console.log('Daily counter reset');
   }
-}, 60000); // Check every minute
+}, 60000);
 
-// Rota inicial para confirmar que está funcionando
+// Health check
 app.get('/', (req, res) => {
   res.json({ 
     message: "🧬 Ancestral Travel Proxy is running!", 
     endpoints: {
-      chat: "POST /api/chat",
+      groq: "POST /api/chat",
+      claude: "POST /api/claude-chat",
       status: "GET /"
     },
     status: "online",
     dailyRequests: dailyCounter,
     dailyLimit: DAILY_LIMIT,
-    groqConfigured: !!process.env.GROQ_API_KEY
+    groqConfigured: !!process.env.GROQ_API_KEY,
+    claudeConfigured: !!process.env.CLAUDE_API_KEY
   });
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: "healthy", 
-    timestamp: new Date().toISOString(),
-    dailyRequests: dailyCounter,
-    dailyLimit: DAILY_LIMIT
-  });
-});
-
-// Chat endpoint
+// Groq endpoint (existente)
 app.post('/api/chat', async (req, res) => {
   try {
-    // Check daily limit
     if (dailyCounter >= DAILY_LIMIT) {
       return res.status(429).json({ 
         error: 'Daily limit reached. Please try again tomorrow.',
@@ -74,26 +65,38 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Construct system prompt
-    let systemPrompt = `Você é um especialista em viagens com foco em roteiros personalizados para a Ancestral Travel.
+    let systemPrompt = `Aja como um especialista em viagens com ampla experiência nacional e internacional. Seu papel é criar roteiros personalizados e dar recomendações detalhadas sobre:
+* Destinos (no Brasil e no exterior)
+* Hospedagens
+* Atrações culturais e naturais
+* Gastronomia local
+* Transporte (local e aéreo)
+* Clima e melhor época para visitar
+* Documentação exigida (vistos, vacinas, seguros)
 
-IMPORTANTE: O usuário pode escolher entre:
-1) ROTEIRO ANCESTRAL - Baseado no teste de DNA/ancestralidade
-2) ROTEIRO LIVRE - Baseado apenas em preferências pessoais
+Seu público são pessoas que amam viajar, mas têm perfis diversos: mochileiros, casais, nômades digitais, famílias, viajantes solos ou amantes da natureza, arte e cultura. Seu trabalho é identificar o perfil de cada um e adaptar suas recomendações de forma empática, profissional e clara.
 
-SUAS RESPOSTAS DEVEM INCLUIR:
-- Se apresente como especialista da Ancestral Travel
-- Recomendações específicas de destinos
-- Orçamentos realistas em reais (R$)
-- Dicas práticas (hospedagem, transporte, melhor época)
-- Seja conversacional, específico, educado e útil
-- Sempre faça uma pergunta para continuar a conversa
+Sempre considere:
+* Orçamento estimado
+* Estilo de viagem preferido (aventura, conforto, luxo, econômico, cultural, gastronômico, etc.)
+* Preferências pessoais (ex: evitar multidões, buscar experiências autênticas, turismo sustentável)
+* Época do ano e clima
 
-REGRAS IMPORTANTES:
-- Quando não souber de algo, pergunte educadamente
-- Não invente informações, seja honesto quando não souber
-- Para orçamentos, seja realista com preços atuais do Brasil
-- Use emojis para deixar as respostas mais visuais`;
+Sempre que possível, inclua dicas locais menos turísticas. Você pode montar roteiros do zero ou sugerir opções prontas, personalizadas com base nas respostas do usuário.
+
+Regras de Interação:
+* Apresente-se apenas uma vez no início do chat
+* Seja educado, direto e acolhedor
+* Pergunte o nome do usuário e o estilo de viagem preferido
+* Faça no máximo 2 perguntas por vez
+* Se não tiver certeza de uma informação, diga isso com transparência — nunca invente
+
+Formato dos Roteiros:
+**DIA X – [Cidade ou Região]**
+* **Manhã:** [Atividade] *(R$ valor aproximado)*
+* **Tarde:** [Atividade] *(R$ valor aproximado)*
+* **Noite:** [Atividade] *(R$ valor aproximado)*
+* 💡 **Dica local:** [Experiência autêntica, pouco conhecida ou especial da região]`;
 
     if (ancestralData) {
       systemPrompt += `\n\nDADOS ANCESTRAIS DO USUÁRIO:
@@ -102,7 +105,6 @@ ${ancestralData}
 Use essas informações para sugerir destinos relacionados às origens ancestrais quando relevante.`;
     }
 
-    // Prepare the request to Groq
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -133,20 +135,120 @@ Use essas informações para sugerir destinos relacionados às origens ancestrai
     }
 
     const data = await groqResponse.json();
-    
-    // Increment daily counter
     dailyCounter++;
     
-    console.log(`Request processed. Daily count: ${dailyCounter}/${DAILY_LIMIT}`);
+    console.log(`Groq request processed. Daily count: ${dailyCounter}/${DAILY_LIMIT}`);
 
     res.json({
       response: data.choices[0].message.content,
       dailyRequestsUsed: dailyCounter,
-      dailyLimit: DAILY_LIMIT
+      dailyLimit: DAILY_LIMIT,
+      provider: 'groq'
     });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Groq Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Claude endpoint (NOVO)
+app.post('/api/claude-chat', async (req, res) => {
+  try {
+    if (dailyCounter >= DAILY_LIMIT) {
+      return res.status(429).json({ 
+        error: 'Daily limit reached. Please try again tomorrow.',
+        dailyLimit: DAILY_LIMIT 
+      });
+    }
+
+    const { message, ancestralData } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    // Prompt otimizado para Claude
+    let claudeSystemPrompt = `Aja como um especialista em viagens com ampla experiência nacional e internacional. Seu papel é criar roteiros personalizados e dar recomendações detalhadas sobre:
+* Destinos (no Brasil e no exterior)
+* Hospedagens
+* Atrações culturais e naturais
+* Gastronomia local
+* Transporte (local e aéreo)
+* Clima e melhor época para visitar
+* Documentação exigida (vistos, vacinas, seguros)
+
+Seu público são pessoas que amam viajar, mas têm perfis diversos: mochileiros, casais, nômades digitais, famílias, viajantes solos ou amantes da natureza, arte e cultura. Seu trabalho é identificar o perfil de cada um e adaptar suas recomendações de forma empática, profissional e clara.
+
+Sempre considere:
+* Orçamento estimado
+* Estilo de viagem preferido (aventura, conforto, luxo, econômico, cultural, gastronômico, etc.)
+* Preferências pessoais (ex: evitar multidões, buscar experiências autênticas, turismo sustentável)
+* Época do ano e clima
+
+Sempre que possível, inclua dicas locais menos turísticas. Você pode montar roteiros do zero ou sugerir opções prontas, personalizadas com base nas respostas do usuário.
+
+Regras de Interação:
+* Apresente-se apenas uma vez no início do chat
+* Seja educado, direto e acolhedor
+* Pergunte o nome do usuário e o estilo de viagem preferido
+* Faça no máximo 2 perguntas por vez
+* Se não tiver certeza de uma informação, diga isso com transparência — nunca invente
+
+Formato dos Roteiros:
+**DIA X – [Cidade ou Região]**
+* **Manhã:** [Atividade] *(R$ valor aproximado)*
+* **Tarde:** [Atividade] *(R$ valor aproximado)*
+* **Noite:** [Atividade] *(R$ valor aproximado)*
+* 💡 **Dica local:** [Experiência autêntica, pouco conhecida ou especial da região]`;
+
+    if (ancestralData) {
+      claudeSystemPrompt += `\n\nDADOS ANCESTRAIS DO USUÁRIO:
+${ancestralData}
+
+Use essas informações para sugerir destinos relacionados às origens ancestrais quando relevante.`;
+    }
+
+    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.CLAUDE_API_KEY}`,
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 1000,
+        system: claudeSystemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: message
+          }
+        ]
+      })
+    });
+
+    if (!claudeResponse.ok) {
+      const errorData = await claudeResponse.text();
+      console.error('Claude API error:', errorData);
+      return res.status(500).json({ error: 'Failed to get response from Claude API' });
+    }
+
+    const data = await claudeResponse.json();
+    dailyCounter++;
+    
+    console.log(`Claude request processed. Daily count: ${dailyCounter}/${DAILY_LIMIT}`);
+
+    res.json({
+      response: data.content[0].text,
+      dailyRequestsUsed: dailyCounter,
+      dailyLimit: DAILY_LIMIT,
+      provider: 'claude'
+    });
+
+  } catch (error) {
+    console.error('Claude Error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -155,4 +257,5 @@ app.listen(PORT, () => {
   console.log(`🧬 Ancestral Travel Proxy running on port ${PORT}`);
   console.log(`📊 Daily limit: ${DAILY_LIMIT} requests`);
   console.log(`🤖 Groq API: ${process.env.GROQ_API_KEY ? 'Configured ✅' : 'Not configured ❌'}`);
+  console.log(`🧠 Claude API: ${process.env.CLAUDE_API_KEY ? 'Configured ✅' : 'Not configured ❌'}`);
 });
