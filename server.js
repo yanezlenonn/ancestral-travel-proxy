@@ -47,41 +47,29 @@ app.get('/', (req, res) => {
   });
 });
 
-// PROMPT PROFISSIONAL
-const PROFESSIONAL_PROMPT = `Aja como um especialista em viagens com ampla experiência nacional e internacional. Seu papel é criar roteiros personalizados e dar recomendações detalhadas sobre:
-* Destinos (no Brasil e no exterior)
-* Hospedagens
-* Atrações culturais e naturais
-* Gastronomia local
-* Transporte (local e aéreo)
-* Clima e melhor época para visitar
-* Documentação exigida (vistos, vacinas, seguros)
+// PROMPT PROFISSIONAL CORRIGIDO E SIMPLIFICADO
+const PROFESSIONAL_PROMPT = `Você é um especialista em viagens da Ancestral Travel, sua função será apoiar o usuário na estruturação de um excelente roteiro
 
-Seu público são pessoas que amam viajar, mas têm perfis diversos: mochileiros, casais, nômades digitais, famílias, viajantes solos ou amantes da natureza, arte e cultura. Seu trabalho é identificar o perfil de cada um e adaptar suas recomendações de forma empática, profissional e clara.
+REGRAS OBRIGATÓRIAS:
+1. NUNCA se apresente novamente após a primeira mensagem
+2. NUNCA pergunte "sobre o que gostaria de conversar"  
+3. Seja DIRETO e objetivo - máximo 3 frases por resposta
+4. NUNCA invente informações sobre o usuário
+5. Máximo 1 pergunta por vez
 
-Sempre considere:
-* Orçamento estimado
-* Estilo de viagem preferido (aventura, conforto, luxo, econômico, cultural, gastronômico, etc.)
-* Preferências pessoais (ex: evitar multidões, buscar experiências autênticas, turismo sustentável)
-* Época do ano e clima
+FORMATO DOS ROTEIROS:
+*DIA X – [Cidade]*
+Manhã: [Atividade] (R$ valor)
+Tarde: [Atividade] (R$ valor)  
+Noite: [Atividade] (R$ valor)
+💡 **Dica local:** [Experiência autêntica]
 
-Sempre que possível, inclua dicas locais menos turísticas. Você pode montar roteiros do zero ou sugerir opções prontas, personalizadas com base nas respostas do usuário.
+APRESENTAÇÃO (apenas uma vez):
+"Sou seu especialista em viagens da Ancestral Travel! Qual seu nome e para onde quer viajar?"
 
-Regras de Interação:
-* Apresente-se apenas uma vez no início do chat
-* Seja educado, direto e acolhedor
-* Pergunte o nome do usuário e o estilo de viagem preferido
-* Faça no máximo 2 perguntas por vez
-* Se não tiver certeza de uma informação, diga isso com transparência — nunca invente
+Para mensagens seguintes: seja direto, crie roteiros específicos ou faça UMA pergunta relevante.`;
 
-Formato dos Roteiros:
-**DIA X – [Cidade ou Região]**
-* **Manhã:** [Atividade] *(R$ valor aproximado)*
-* **Tarde:** [Atividade] *(R$ valor aproximado)*
-* **Noite:** [Atividade] *(R$ valor aproximado)*
-* 💡 **Dica local:** [Experiência autêntica, pouco conhecida ou especial da região]`;
-
-// OpenAI chat endpoint (ÚNICO)
+// OpenAI chat endpoint com DEBUG
 app.post('/api/chat', async (req, res) => {
   try {
     if (dailyCounter >= DAILY_LIMIT) {
@@ -100,11 +88,16 @@ app.post('/api/chat', async (req, res) => {
     let systemPrompt = PROFESSIONAL_PROMPT;
 
     if (ancestralData) {
-      systemPrompt += `\n\nDADOS ANCESTRAIS DO USUÁRIO:
-${ancestralData}
-
-Use essas informações para sugerir destinos relacionados às origens ancestrais quando relevante.`;
+      systemPrompt += `\n\nDADOS ANCESTRAIS: ${ancestralData}
+Use essas informações para sugerir destinos conectados às origens quando relevante.`;
     }
+
+    // DEBUG: Log do que está sendo enviado
+    console.log('=== DEBUG REQUEST ===');
+    console.log('Model: gpt-4');
+    console.log('System Prompt Length:', systemPrompt.length);
+    console.log('User Message:', message);
+    console.log('Ancestral Data:', ancestralData ? 'Yes' : 'No');
 
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -113,7 +106,7 @@ Use essas informações para sugerir destinos relacionados às origens ancestrai
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4',  // GARANTINDO GPT-4
         messages: [
           {
             role: 'system',
@@ -124,7 +117,7 @@ Use essas informações para sugerir destinos relacionados às origens ancestrai
             content: message
           }
         ],
-        max_tokens: 500,
+        max_tokens: 300,  // REDUZIDO para forçar respostas diretas
         temperature: 0.7
       })
     });
@@ -132,19 +125,72 @@ Use essas informações para sugerir destinos relacionados às origens ancestrai
     if (!openaiResponse.ok) {
       const errorData = await openaiResponse.text();
       console.error('OpenAI API error:', errorData);
+      
+      // Se GPT-4 falhar, tenta GPT-3.5-turbo como fallback
+      if (errorData.includes('model_not_found') || errorData.includes('insufficient_quota')) {
+        console.log('GPT-4 failed, trying GPT-3.5-turbo...');
+        
+        const fallbackResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              {
+                role: 'system',
+                content: systemPrompt
+              },
+              {
+                role: 'user',
+                content: message
+              }
+            ],
+            max_tokens: 300,
+            temperature: 0.7
+          })
+        });
+        
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          dailyCounter++;
+          
+          console.log('=== DEBUG RESPONSE (GPT-3.5) ===');
+          console.log('Response:', fallbackData.choices[0].message.content);
+          
+          return res.json({
+            response: fallbackData.choices[0].message.content,
+            dailyRequestsUsed: dailyCounter,
+            dailyLimit: DAILY_LIMIT,
+            provider: 'openai-gpt35',
+            debug: 'Used GPT-3.5-turbo fallback'
+          });
+        }
+      }
+      
       return res.status(500).json({ error: 'Failed to get response from OpenAI API' });
     }
 
     const data = await openaiResponse.json();
     dailyCounter++;
     
-    console.log(`OpenAI request processed. Daily count: ${dailyCounter}/${DAILY_LIMIT}`);
-
+    // DEBUG: Log da resposta
+    console.log('=== DEBUG RESPONSE (GPT-4) ===');
+    console.log('Response:', data.choices[0].message.content);
+    console.log('Usage:', data.usage);
+    
     res.json({
       response: data.choices[0].message.content,
       dailyRequestsUsed: dailyCounter,
       dailyLimit: DAILY_LIMIT,
-      provider: 'openai'
+      provider: 'openai-gpt4',
+      debug: {
+        model: 'gpt-4',
+        usage: data.usage,
+        promptLength: systemPrompt.length
+      }
     });
 
   } catch (error) {
