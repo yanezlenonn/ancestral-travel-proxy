@@ -39,34 +39,20 @@ app.get('/', (req, res) => {
     endpoints: {
       groq: "POST /api/chat",
       claude: "POST /api/claude-chat",
+      openai: "POST /api/openai-chat",
       status: "GET /"
     },
     status: "online",
     dailyRequests: dailyCounter,
     dailyLimit: DAILY_LIMIT,
     groqConfigured: !!process.env.GROQ_API_KEY,
-    claudeConfigured: !!process.env.CLAUDE_API_KEY
+    claudeConfigured: !!process.env.CLAUDE_API_KEY,
+    openaiConfigured: !!process.env.OPENAI_API_KEY
   });
 });
 
-// Groq endpoint
-app.post('/api/chat', async (req, res) => {
-  try {
-    if (dailyCounter >= DAILY_LIMIT) {
-      return res.status(429).json({ 
-        error: 'Daily limit reached. Please try again tomorrow.',
-        dailyLimit: DAILY_LIMIT 
-      });
-    }
-
-    const { message, ancestralData } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
-    // PROMPT CORRIGIDO - DIRETO E OBJETIVO
-    let systemPrompt = `Aja como um especialista em viagens com ampla experiência nacional e internacional.
+// PROMPT PROFISSIONAL PARA TODAS AS APIs
+const PROFESSIONAL_PROMPT = `Aja como um especialista em viagens com ampla experiência nacional e internacional.
 
 REGRAS RÍGIDAS:
 - Apresente-se APENAS UMA VEZ no início da conversa
@@ -93,6 +79,96 @@ Regras de Interação:
 * Faça no máximo 2 perguntas por vez
 * Se não tiver certeza de uma informação, diga isso com transparência — nunca invente`;
 
+// OpenAI GPT-4 endpoint (NOVO - PRINCIPAL)
+app.post('/api/openai-chat', async (req, res) => {
+  try {
+    if (dailyCounter >= DAILY_LIMIT) {
+      return res.status(429).json({ 
+        error: 'Daily limit reached. Please try again tomorrow.',
+        dailyLimit: DAILY_LIMIT 
+      });
+    }
+
+    const { message, ancestralData } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    let systemPrompt = PROFESSIONAL_PROMPT;
+
+    if (ancestralData) {
+      systemPrompt += `\n\nDADOS ANCESTRAIS DO USUÁRIO:
+${ancestralData}
+
+Use essas informações para sugerir destinos relacionados às origens ancestrais quando relevante.`;
+    }
+
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: message
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      })
+    });
+
+    if (!openaiResponse.ok) {
+      const errorData = await openaiResponse.text();
+      console.error('OpenAI API error:', errorData);
+      return res.status(500).json({ error: 'Failed to get response from OpenAI API' });
+    }
+
+    const data = await openaiResponse.json();
+    dailyCounter++;
+    
+    console.log(`OpenAI request processed. Daily count: ${dailyCounter}/${DAILY_LIMIT}`);
+
+    res.json({
+      response: data.choices[0].message.content,
+      dailyRequestsUsed: dailyCounter,
+      dailyLimit: DAILY_LIMIT,
+      provider: 'openai'
+    });
+
+  } catch (error) {
+    console.error('OpenAI Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Groq endpoint (fallback)
+app.post('/api/chat', async (req, res) => {
+  try {
+    if (dailyCounter >= DAILY_LIMIT) {
+      return res.status(429).json({ 
+        error: 'Daily limit reached. Please try again tomorrow.',
+        dailyLimit: DAILY_LIMIT 
+      });
+    }
+
+    const { message, ancestralData } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    let systemPrompt = PROFESSIONAL_PROMPT;
+
     if (ancestralData) {
       systemPrompt += `\n\nDADOS ANCESTRAIS DO USUÁRIO:
 ${ancestralData}
@@ -118,7 +194,7 @@ Use essas informações para sugerir destinos relacionados às origens ancestrai
             content: message
           }
         ],
-        max_tokens: 500, // REDUZIDO PARA RESPOSTAS MAIS CURTAS
+        max_tokens: 500,
         temperature: 0.7
       })
     });
@@ -147,7 +223,7 @@ Use essas informações para sugerir destinos relacionados às origens ancestrai
   }
 });
 
-// Claude endpoint
+// Claude endpoint (mantido como fallback)
 app.post('/api/claude-chat', async (req, res) => {
   try {
     if (dailyCounter >= DAILY_LIMIT) {
@@ -163,36 +239,10 @@ app.post('/api/claude-chat', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // PROMPT CORRIGIDO PARA CLAUDE TAMBÉM
-    let claudeSystemPrompt = `Aja como um especialista em viagens com ampla experiência nacional e internacional.
-
-REGRAS RÍGIDAS:
-- Apresente-se APENAS UMA VEZ no início da conversa
-- NUNCA invente informações sobre o usuário
-- Seja direto e objetivo
-- Máximo 2 perguntas por vez
-- NUNCA se chame por nome - você é apenas "especialista"
-- NUNCA repita a apresentação em mensagens seguintes
-- NUNCA tire conclusões sobre o tipo de viagem sem o usuário especificar
-
-FORMATO OBRIGATÓRIO DOS ROTEIROS:
-**DIA X – [Cidade]**
-* **Manhã:** [Atividade] *(R$ valor)*
-* **Tarde:** [Atividade] *(R$ valor)*
-* **Noite:** [Atividade] *(R$ valor)*
-* 💡 **Dica local:** [Experiência autêntica]
-
-Sempre que possível, inclua dicas locais menos turísticas. Você pode sugerir roteiros prontos ou montar personalizados a partir das preferências do usuário.
-
-Regras de Interação:
-* Apresente-se apenas uma vez no início do chat
-* Seja educado, direto e acolhedor
-* Pergunte o nome do usuário e o estilo de viagem preferido
-* Faça no máximo 2 perguntas por vez
-* Se não tiver certeza de uma informação, diga isso com transparência — nunca invente`;
+    let systemPrompt = PROFESSIONAL_PROMPT;
 
     if (ancestralData) {
-      claudeSystemPrompt += `\n\nDADOS ANCESTRAIS DO USUÁRIO:
+      systemPrompt += `\n\nDADOS ANCESTRAIS DO USUÁRIO:
 ${ancestralData}
 
 Use essas informações para sugerir destinos relacionados às origens ancestrais quando relevante.`;
@@ -207,8 +257,8 @@ Use essas informações para sugerir destinos relacionados às origens ancestrai
       },
       body: JSON.stringify({
         model: 'claude-3-haiku-20240307',
-        max_tokens: 500, // REDUZIDO PARA RESPOSTAS MAIS CURTAS
-        system: claudeSystemPrompt,
+        max_tokens: 500,
+        system: systemPrompt,
         messages: [
           {
             role: 'user',
@@ -247,4 +297,5 @@ app.listen(PORT, () => {
   console.log(`📊 Daily limit: ${DAILY_LIMIT} requests`);
   console.log(`🤖 Groq API: ${process.env.GROQ_API_KEY ? 'Configured ✅' : 'Not configured ❌'}`);
   console.log(`🧠 Claude API: ${process.env.CLAUDE_API_KEY ? 'Configured ✅' : 'Not configured ❌'}`);
+  console.log(`🚀 OpenAI API: ${process.env.OPENAI_API_KEY ? 'Configured ✅' : 'Not configured ❌'}`);
 });
