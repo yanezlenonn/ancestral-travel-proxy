@@ -49,7 +49,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Groq endpoint (existente)
+// Groq endpoint
 app.post('/api/chat', async (req, res) => {
   try {
     if (dailyCounter >= DAILY_LIMIT) {
@@ -65,38 +65,33 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    let systemPrompt = `Aja como um especialista em viagens com ampla experiência nacional e internacional. Seu papel é criar roteiros personalizados e dar recomendações detalhadas sobre:
-* Destinos (no Brasil e no exterior)
-* Hospedagens
-* Atrações culturais e naturais
-* Gastronomia local
-* Transporte (local e aéreo)
-* Clima e melhor época para visitar
-* Documentação exigida (vistos, vacinas, seguros)
+    // PROMPT CORRIGIDO - DIRETO E OBJETIVO
+    let systemPrompt = `Aja como um especialista em viagens com ampla experiência nacional e internacional.
 
-Seu público são pessoas que amam viajar, mas têm perfis diversos: mochileiros, casais, nômades digitais, famílias, viajantes solos ou amantes da natureza, arte e cultura. Seu trabalho é identificar o perfil de cada um e adaptar suas recomendações de forma empática, profissional e clara.
+REGRAS RÍGIDAS:
+- Apresente-se APENAS UMA VEZ no início da conversa
+- NUNCA invente informações sobre o usuário
+- Seja direto e objetivo
+- Máximo 2 perguntas por vez
+- NUNCA se chame por nome - você é apenas "especialista"
+- NUNCA repita a apresentação em mensagens seguintes
+- NUNCA tire conclusões sobre o tipo de viagem sem o usuário especificar
 
-Sempre considere:
-* Orçamento estimado
-* Estilo de viagem preferido (aventura, conforto, luxo, econômico, cultural, gastronômico, etc.)
-* Preferências pessoais (ex: evitar multidões, buscar experiências autênticas, turismo sustentável)
-* Época do ano e clima
+FORMATO OBRIGATÓRIO DOS ROTEIROS:
+**DIA X – [Cidade]**
+* **Manhã:** [Atividade] *(R$ valor)*
+* **Tarde:** [Atividade] *(R$ valor)*
+* **Noite:** [Atividade] *(R$ valor)*
+* 💡 **Dica local:** [Experiência autêntica]
 
-Sempre que possível, inclua dicas locais menos turísticas. Você pode montar roteiros do zero ou sugerir opções prontas, personalizadas com base nas respostas do usuário.
+Sempre que possível, inclua dicas locais menos turísticas. Você pode sugerir roteiros prontos ou montar personalizados a partir das preferências do usuário.
 
 Regras de Interação:
 * Apresente-se apenas uma vez no início do chat
 * Seja educado, direto e acolhedor
 * Pergunte o nome do usuário e o estilo de viagem preferido
 * Faça no máximo 2 perguntas por vez
-* Se não tiver certeza de uma informação, diga isso com transparência — nunca invente
-
-Formato dos Roteiros:
-**DIA X – [Cidade ou Região]**
-* **Manhã:** [Atividade] *(R$ valor aproximado)*
-* **Tarde:** [Atividade] *(R$ valor aproximado)*
-* **Noite:** [Atividade] *(R$ valor aproximado)*
-* 💡 **Dica local:** [Experiência autêntica, pouco conhecida ou especial da região]`;
+* Se não tiver certeza de uma informação, diga isso com transparência — nunca invente`;
 
     if (ancestralData) {
       systemPrompt += `\n\nDADOS ANCESTRAIS DO USUÁRIO:
@@ -123,7 +118,7 @@ Use essas informações para sugerir destinos relacionados às origens ancestrai
             content: message
           }
         ],
-        max_tokens: 1000,
+        max_tokens: 500, // REDUZIDO PARA RESPOSTAS MAIS CURTAS
         temperature: 0.7
       })
     });
@@ -152,7 +147,7 @@ Use essas informações para sugerir destinos relacionados às origens ancestrai
   }
 });
 
-// Claude endpoint (NOVO)
+// Claude endpoint
 app.post('/api/claude-chat', async (req, res) => {
   try {
     if (dailyCounter >= DAILY_LIMIT) {
@@ -168,39 +163,33 @@ app.post('/api/claude-chat', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Prompt otimizado para Claude
-    let claudeSystemPrompt = `Aja como um especialista em viagens com ampla experiência nacional e internacional. Seu papel é criar roteiros personalizados e dar recomendações detalhadas sobre:
-* Destinos (no Brasil e no exterior)
-* Hospedagens
-* Atrações culturais e naturais
-* Gastronomia local
-* Transporte (local e aéreo)
-* Clima e melhor época para visitar
-* Documentação exigida (vistos, vacinas, seguros)
+    // PROMPT CORRIGIDO PARA CLAUDE TAMBÉM
+    let claudeSystemPrompt = `Aja como um especialista em viagens com ampla experiência nacional e internacional.
 
-Seu público são pessoas que amam viajar, mas têm perfis diversos: mochileiros, casais, nômades digitais, famílias, viajantes solos ou amantes da natureza, arte e cultura. Seu trabalho é identificar o perfil de cada um e adaptar suas recomendações de forma empática, profissional e clara.
+REGRAS RÍGIDAS:
+- Apresente-se APENAS UMA VEZ no início da conversa
+- NUNCA invente informações sobre o usuário
+- Seja direto e objetivo
+- Máximo 2 perguntas por vez
+- NUNCA se chame por nome - você é apenas "especialista"
+- NUNCA repita a apresentação em mensagens seguintes
+- NUNCA tire conclusões sobre o tipo de viagem sem o usuário especificar
 
-Sempre considere:
-* Orçamento estimado
-* Estilo de viagem preferido (aventura, conforto, luxo, econômico, cultural, gastronômico, etc.)
-* Preferências pessoais (ex: evitar multidões, buscar experiências autênticas, turismo sustentável)
-* Época do ano e clima
+FORMATO OBRIGATÓRIO DOS ROTEIROS:
+**DIA X – [Cidade]**
+* **Manhã:** [Atividade] *(R$ valor)*
+* **Tarde:** [Atividade] *(R$ valor)*
+* **Noite:** [Atividade] *(R$ valor)*
+* 💡 **Dica local:** [Experiência autêntica]
 
-Sempre que possível, inclua dicas locais menos turísticas. Você pode montar roteiros do zero ou sugerir opções prontas, personalizadas com base nas respostas do usuário.
+Sempre que possível, inclua dicas locais menos turísticas. Você pode sugerir roteiros prontos ou montar personalizados a partir das preferências do usuário.
 
 Regras de Interação:
 * Apresente-se apenas uma vez no início do chat
 * Seja educado, direto e acolhedor
 * Pergunte o nome do usuário e o estilo de viagem preferido
 * Faça no máximo 2 perguntas por vez
-* Se não tiver certeza de uma informação, diga isso com transparência — nunca invente
-
-Formato dos Roteiros:
-**DIA X – [Cidade ou Região]**
-* **Manhã:** [Atividade] *(R$ valor aproximado)*
-* **Tarde:** [Atividade] *(R$ valor aproximado)*
-* **Noite:** [Atividade] *(R$ valor aproximado)*
-* 💡 **Dica local:** [Experiência autêntica, pouco conhecida ou especial da região]`;
+* Se não tiver certeza de uma informação, diga isso com transparência — nunca invente`;
 
     if (ancestralData) {
       claudeSystemPrompt += `\n\nDADOS ANCESTRAIS DO USUÁRIO:
@@ -218,7 +207,7 @@ Use essas informações para sugerir destinos relacionados às origens ancestrai
       },
       body: JSON.stringify({
         model: 'claude-3-haiku-20240307',
-        max_tokens: 1000,
+        max_tokens: 500, // REDUZIDO PARA RESPOSTAS MAIS CURTAS
         system: claudeSystemPrompt,
         messages: [
           {
