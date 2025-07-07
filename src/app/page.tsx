@@ -1,362 +1,524 @@
 'use client';
 
 import React from 'react';
-import Header from '@/components/layout/Header';
-import HeroSection from '@/components/HeroSection';
-import FeaturesSection from '@/components/FeaturesSection';
-import TestimonialsSection from '@/components/TestimonialsSection';
-import Footer from '@/components/layout/Footer';
 
 export default function HomePage() {
-  // Mock user state - será substituído pela autenticação real
-  const user = null; // ou { name: 'João', email: 'joao@example.com' }
-
-  const handleSignIn = () => {
-    // TODO: Implementar autenticação
-    console.log('Sign in clicked');
-    // Redirect to auth page or trigger modal
-  };
-
-  const handleSignOut = () => {
-    // TODO: Implementar logout
-    console.log('Sign out clicked');
-  };
-
-  const handleGetStarted = () => {
-    // TODO: Redirect to chat or auth
-    console.log('Get started clicked');
-  };
-
-  const handleWatchDemo = () => {
-    // TODO: Open demo modal or video
-    console.log('Watch demo clicked');
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      backgroundColor: 'white',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+    },
+    header: {
+      position: 'sticky' as const,
+      top: 0,
+      zIndex: 50,
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      backdropFilter: 'blur(8px)',
+      borderBottom: '1px solid #e5e7eb',
+    },
+    nav: {
+      maxWidth: '80rem',
+      margin: '0 auto',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      height: '4rem',
+      padding: '0 1.5rem',
+    },
+    logo: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+    },
+    logoIcon: {
+      width: '2rem',
+      height: '2rem',
+      background: 'linear-gradient(135deg, #2563eb, #9333ea)',
+      borderRadius: '0.5rem',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'white',
+      fontWeight: 'bold',
+    },
+    logoText: {
+      fontSize: '1.25rem',
+      fontWeight: 'bold',
+      color: '#111827',
+    },
+    navLinks: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '2rem',
+    },
+    navLink: {
+      color: '#4b5563',
+      fontWeight: '500',
+      textDecoration: 'none',
+      transition: 'color 0.2s',
+    },
+    button: {
+      padding: '0.5rem 1.5rem',
+      borderRadius: '0.5rem',
+      fontWeight: '600',
+      border: 'none',
+      cursor: 'pointer',
+      transition: 'all 0.2s',
+    },
+    buttonPrimary: {
+      background: 'linear-gradient(135deg, #2563eb, #9333ea)',
+      color: 'white',
+      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+    },
+    buttonSecondary: {
+      backgroundColor: 'white',
+      color: '#4b5563',
+      border: '2px solid #e5e7eb',
+    },
+    hero: {
+      background: 'linear-gradient(135deg, #dbeafe, #ffffff, #f3e8ff)',
+      padding: '5rem 1.5rem',
+      textAlign: 'center' as const,
+    },
+    heroContainer: {
+      maxWidth: '80rem',
+      margin: '0 auto',
+    },
+    badge: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '0.5rem 1rem',
+      backgroundColor: '#dbeafe',
+      color: '#1e40af',
+      borderRadius: '9999px',
+      fontSize: '0.875rem',
+      fontWeight: '500',
+      marginBottom: '2rem',
+    },
+    heroTitle: {
+      fontSize: 'clamp(2rem, 8vw, 4rem)',
+      fontWeight: 'bold',
+      color: '#111827',
+      lineHeight: '1.1',
+      marginBottom: '1.5rem',
+    },
+    gradient: {
+      background: 'linear-gradient(135deg, #2563eb, #9333ea)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+    },
+    heroText: {
+      fontSize: '1.25rem',
+      color: '#4b5563',
+      maxWidth: '48rem',
+      margin: '0 auto 2rem auto',
+      lineHeight: '1.6',
+    },
+    heroButtons: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: '1rem',
+      alignItems: 'center',
+      marginBottom: '2rem',
+    },
+    heroButtonsDesktop: {
+      display: 'flex',
+      flexDirection: 'row' as const,
+      gap: '1rem',
+      alignItems: 'center',
+    },
+    heroStats: {
+      paddingTop: '2rem',
+    },
+    section: {
+      padding: '5rem 1.5rem',
+    },
+    sectionWhite: {
+      backgroundColor: 'white',
+    },
+    sectionGray: {
+      backgroundColor: '#f9fafb',
+    },
+    sectionContainer: {
+      maxWidth: '80rem',
+      margin: '0 auto',
+    },
+    sectionHeader: {
+      textAlign: 'center' as const,
+      marginBottom: '4rem',
+    },
+    sectionTitle: {
+      fontSize: 'clamp(2rem, 6vw, 3rem)',
+      fontWeight: 'bold',
+      color: '#111827',
+      marginBottom: '1.5rem',
+    },
+    sectionText: {
+      fontSize: '1.25rem',
+      color: '#4b5563',
+      maxWidth: '48rem',
+      margin: '0 auto',
+    },
+    grid: {
+      display: 'grid',
+      gap: '2rem',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    },
+    card: {
+      backgroundColor: 'white',
+      border: '1px solid #e5e7eb',
+      borderRadius: '0.75rem',
+      padding: '2rem',
+      textAlign: 'center' as const,
+      transition: 'all 0.3s',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    },
+    cardIcon: {
+      fontSize: '3rem',
+      marginBottom: '1.5rem',
+    },
+    cardTitle: {
+      fontSize: '1.5rem',
+      fontWeight: 'bold',
+      color: '#111827',
+      marginBottom: '1rem',
+    },
+    cardText: {
+      color: '#4b5563',
+      lineHeight: '1.6',
+      marginBottom: '1.5rem',
+    },
+    cardBadge: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '0.25rem 0.75rem',
+      backgroundColor: '#dbeafe',
+      color: '#1e40af',
+      borderRadius: '9999px',
+      fontSize: '0.875rem',
+      fontWeight: '500',
+    },
+    statsGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+      gap: '2rem',
+      marginBottom: '4rem',
+    },
+    stat: {
+      textAlign: 'center' as const,
+    },
+    statNumber: {
+      fontSize: '2.5rem',
+      fontWeight: 'bold',
+      color: '#2563eb',
+      marginBottom: '0.5rem',
+    },
+    statLabel: {
+      color: '#4b5563',
+      fontWeight: '500',
+    },
+    testimonialCard: {
+      backgroundColor: 'white',
+      border: '1px solid #e5e7eb',
+      borderRadius: '0.75rem',
+      padding: '1.5rem',
+      transition: 'all 0.3s',
+    },
+    testimonialHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '1rem',
+      marginBottom: '1.5rem',
+    },
+    avatar: {
+      width: '3rem',
+      height: '3rem',
+      background: 'linear-gradient(135deg, #2563eb, #9333ea)',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'white',
+      fontWeight: '600',
+    },
+    testimonialName: {
+      fontWeight: '600',
+      color: '#111827',
+    },
+    testimonialRole: {
+      fontSize: '0.875rem',
+      color: '#4b5563',
+    },
+    stars: {
+      display: 'flex',
+      gap: '0.25rem',
+      marginBottom: '1rem',
+    },
+    testimonialText: {
+      color: '#374151',
+      lineHeight: '1.6',
+      marginBottom: '1rem',
+    },
+    footer: {
+      backgroundColor: '#111827',
+      color: 'white',
+      padding: '4rem 1.5rem',
+    },
+    footerGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+      gap: '2rem',
+      marginBottom: '3rem',
+    },
+    footerTitle: {
+      fontSize: '1.125rem',
+      fontWeight: '600',
+      marginBottom: '1rem',
+    },
+    footerLink: {
+      color: '#9ca3af',
+      textDecoration: 'none',
+      transition: 'color 0.2s',
+      display: 'block',
+      marginBottom: '0.75rem',
+    },
+    footerBottom: {
+      borderTop: '1px solid #374151',
+      paddingTop: '2rem',
+      textAlign: 'center' as const,
+      color: '#9ca3af',
+    },
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div style={styles.container}>
       {/* Header */}
-      <Header
-        user={user}
-        onSignIn={handleSignIn}
-        onSignOut={handleSignOut}
-      />
+      <header style={styles.header}>
+        <nav style={styles.nav}>
+          <div style={styles.logo}>
+            <div style={styles.logoIcon}>🧭</div>
+            <span style={styles.logoText}>Ancestral Travel</span>
+          </div>
 
-      {/* Main Content */}
-      <main>
-        {/* Hero Section */}
-        <HeroSection
-          onGetStarted={handleGetStarted}
-          onWatchDemo={handleWatchDemo}
-        />
+          <div style={styles.navLinks}>
+            <a href="#features" style={styles.navLink}>Como Funciona</a>
+            <a href="#testimonials" style={styles.navLink}>Avaliações</a>
+            <a href="#pricing" style={styles.navLink}>Preços</a>
+          </div>
 
-        {/* Features Section */}
-        <FeaturesSection />
-
-        {/* How It Works Section */}
-        <HowItWorksSection />
-
-        {/* Testimonials Section */}
-        <TestimonialsSection />
-
-        {/* Pricing Section */}
-        <PricingSection />
-
-        {/* FAQ Section */}
-        <FAQSection />
-
-        {/* Final CTA Section */}
-        <FinalCTASection onGetStarted={handleGetStarted} />
-      </main>
-
-      {/* Footer */}
-      <Footer />
-    </div>
-  );
-}
-
-// How It Works Section
-const HowItWorksSection: React.FC = () => {
-  const steps = [
-    {
-      number: '1',
-      title: 'Escolha seu Modo',
-      description: 'DNA para viagens ancestrais ou Tradicional para qualquer destino',
-      icon: '🎯',
-    },
-    {
-      number: '2',
-      title: 'Upload & Chat',
-      description: 'Faça upload do DNA (opcional) e converse com nossa IA especializada',
-      icon: '🤖',
-    },
-    {
-      number: '3',
-      title: 'Receba seu Roteiro',
-      description: 'Roteiro personalizado com destinos, atividades e dicas culturais',
-      icon: '✈️',
-    },
-  ];
-
-  return (
-    <section className="section-padding bg-white" id="how-it-works">
-      <div className="container-custom">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            Como funciona em{' '}
-            <span className="text-gradient">3 passos simples</span>
-          </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Da ideia à viagem dos sonhos em menos de 5 minutos
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          {steps.map((step, index) => (
-            <div key={index} className="text-center relative">
-              {/* Connection Line */}
-              {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-20 left-1/2 w-full h-0.5 bg-gradient-primary transform translate-x-1/2 z-0" />
-              )}
-              
-              <div className="relative z-10">
-                <div className="w-20 h-20 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
-                  {step.icon}
-                </div>
-                <div className="w-8 h-8 bg-white border-4 border-primary-500 rounded-full flex items-center justify-center mx-auto -mt-4 mb-6 font-bold text-primary-500">
-                  {step.number}
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  {step.title}
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  {step.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-// Pricing Section
-const PricingSection: React.FC = () => {
-  return (
-    <section className="section-padding bg-gray-50" id="pricing">
-      <div className="container-custom">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            Preços{' '}
-            <span className="text-gradient">transparentes</span>
-          </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Comece grátis e faça upgrade quando precisar de mais
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {/* Free Plan */}
-          <div className="card text-center p-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Gratuito</h3>
-            <div className="text-5xl font-bold text-gray-900 mb-2">R$ 0</div>
-            <p className="text-gray-600 mb-8">Para sempre</p>
-            
-            <ul className="space-y-4 mb-8 text-left">
-              <li className="flex items-center space-x-3">
-                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span>5 consultas por dia</span>
-              </li>
-              <li className="flex items-center space-x-3">
-                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span>Ambos os modos (DNA + Tradicional)</span>
-              </li>
-              <li className="flex items-center space-x-3">
-                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span>Upload de DNA</span>
-              </li>
-              <li className="flex items-center space-x-3">
-                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span>Suporte por email</span>
-              </li>
-            </ul>
-
-            <button className="btn-secondary w-full">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button style={{ ...styles.button, ...styles.buttonSecondary }}>
+              Entrar
+            </button>
+            <button style={{ ...styles.button, ...styles.buttonPrimary }}>
               Começar Grátis
             </button>
           </div>
+        </nav>
+      </header>
 
-          {/* Premium Plan */}
-          <div className="card text-center p-8 relative border-2 border-primary-500">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-              <span className="bg-gradient-primary text-white px-6 py-2 rounded-full text-sm font-semibold">
-                Mais Popular
+      {/* Hero Section */}
+      <section style={styles.hero}>
+        <div style={styles.heroContainer}>
+          <div style={styles.badge}>
+            ✨ Novo: Baseado em DNA
+          </div>
+
+          <h1 style={styles.heroTitle}>
+            Descubra suas{' '}
+            <span style={styles.gradient}>origens</span>
+            <br />
+            através de{' '}
+            <span style={styles.gradient}>viagens épicas</span>
+          </h1>
+          
+          <p style={styles.heroText}>
+            O primeiro planejador de viagens do mundo que usa seu DNA para criar 
+            roteiros personalizados baseados na sua ancestralidade. 
+            <strong> Conecte-se com suas raízes.</strong>
+          </p>
+
+          <div style={window.innerWidth > 640 ? styles.heroButtonsDesktop : styles.heroButtons}>
+            <button style={{ ...styles.button, ...styles.buttonPrimary, minWidth: '200px', padding: '0.75rem 1.5rem' }}>
+              Começar Grátis
+            </button>
+            <button style={{ ...styles.button, ...styles.buttonSecondary, minWidth: '180px', padding: '0.75rem 1.5rem' }}>
+              Ver Demo
+            </button>
+          </div>
+
+          <div style={styles.heroStats}>
+            <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+              Mais de 10,000 viajantes já descobriram suas origens
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              {'⭐'.repeat(5)}
+              <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#4b5563', marginLeft: '0.5rem' }}>
+                4.9/5 (2,847 avaliações)
               </span>
             </div>
-            
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Premium</h3>
-            <div className="text-5xl font-bold text-gray-900 mb-2">R$ 29</div>
-            <p className="text-gray-600 mb-8">por mês</p>
-            
-            <ul className="space-y-4 mb-8 text-left">
-              <li className="flex items-center space-x-3">
-                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span>Consultas ilimitadas</span>
-              </li>
-              <li className="flex items-center space-x-3">
-                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span>Export PDF profissional</span>
-              </li>
-              <li className="flex items-center space-x-3">
-                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span>Histórico completo salvo</span>
-              </li>
-              <li className="flex items-center space-x-3">
-                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span>Suporte prioritário</span>
-              </li>
-              <li className="flex items-center space-x-3">
-                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span>Novos recursos em primeiro lugar</span>
-              </li>
-            </ul>
-
-            <button className="btn-primary w-full">
-              Começar Teste Grátis
-            </button>
-            <p className="text-xs text-gray-500 mt-2">7 dias grátis, cancele quando quiser</p>
           </div>
         </div>
-      </div>
-    </section>
-  );
-};
+      </section>
 
-// FAQ Section
-const FAQSection: React.FC = () => {
-  const faqs = [
-    {
-      question: 'Como funciona a análise de DNA?',
-      answer: 'Aceitamos arquivos de testes de DNA das principais empresas como 23andMe, MyHeritage, AncestryDNA. Nossa IA analisa os dados de ancestralidade e cria roteiros personalizados baseados nas regiões onde seus antepassados viveram.',
-    },
-    {
-      question: 'Meus dados de DNA estão seguros?',
-      answer: 'Sim! Seguimos os mais altos padrões de segurança. Seus dados são criptografados e nunca compartilhados. Você pode deletar seus dados a qualquer momento.',
-    },
-    {
-      question: 'Posso usar sem fazer teste de DNA?',
-      answer: 'Claro! O Modo Tradicional funciona como um planejador de viagens inteligente para qualquer destino, sem necessidade de DNA.',
-    },
-    {
-      question: 'Quantas consultas posso fazer?',
-      answer: 'No plano gratuito: 5 consultas por dia. No Premium: ilimitadas. Cada conversa com a IA conta como uma consulta.',
-    },
-    {
-      question: 'Posso cancelar a qualquer momento?',
-      answer: 'Sim, você pode cancelar sua assinatura a qualquer momento. Não há contratos ou taxas de cancelamento.',
-    },
-  ];
+      {/* Features Section */}
+      <section id="features" style={{ ...styles.section, ...styles.sectionWhite }}>
+        <div style={styles.sectionContainer}>
+          <div style={styles.sectionHeader}>
+            <div style={{ ...styles.badge, backgroundColor: '#dcfce7', color: '#166534' }}>
+              Recursos Únicos
+            </div>
+            <h2 style={styles.sectionTitle}>
+              Tecnologia que conecta{' '}
+              <span style={styles.gradient}>passado e futuro</span>
+            </h2>
+            <p style={styles.sectionText}>
+              Combinamos ciência genética, inteligência artificial e décadas de conhecimento 
+              em turismo para criar a experiência de viagem mais personalizada do mundo.
+            </p>
+          </div>
 
-  return (
-    <section className="section-padding bg-white" id="faq">
-      <div className="container-custom">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            Perguntas{' '}
-            <span className="text-gradient">frequentes</span>
-          </h2>
+          <div style={styles.grid}>
+            {[
+              {
+                icon: '🧬',
+                title: 'Modo DNA',
+                description: 'Faça upload do seu teste de DNA e descubra roteiros únicos baseados na sua herança genética.',
+                badge: 'Exclusivo'
+              },
+              {
+                icon: '🌍',
+                title: 'Modo Tradicional',
+                description: 'Planejamento inteligente de viagens com IA para qualquer destino do mundo.',
+                badge: 'Popular'
+              },
+              {
+                icon: '🤖',
+                title: 'IA Especializada',
+                description: 'Dois agentes especializados criando roteiros personalizados para você.',
+                badge: 'Avançado'
+              }
+            ].map((feature, index) => (
+              <div key={index} style={styles.card}>
+                <div style={styles.cardIcon}>{feature.icon}</div>
+                <h3 style={styles.cardTitle}>{feature.title}</h3>
+                <p style={styles.cardText}>{feature.description}</p>
+                <div style={styles.cardBadge}>{feature.badge}</div>
+              </div>
+            ))}
+          </div>
         </div>
+      </section>
 
-        <div className="max-w-3xl mx-auto space-y-6">
-          {faqs.map((faq, index) => (
-            <div key={index} className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                {faq.question}
-              </h3>
-              <p className="text-gray-600 leading-relaxed">
-                {faq.answer}
+      {/* Testimonials Section */}
+      <section id="testimonials" style={{ ...styles.section, ...styles.sectionGray }}>
+        <div style={styles.sectionContainer}>
+          <div style={styles.sectionHeader}>
+            <div style={{ ...styles.badge, backgroundColor: '#fef3c7', color: '#92400e' }}>
+              ⭐ Avaliado com 4.9/5
+            </div>
+            <h2 style={styles.sectionTitle}>
+              Amado por{' '}
+              <span style={styles.gradient}>viajantes do mundo todo</span>
+            </h2>
+          </div>
+
+          <div style={styles.statsGrid}>
+            {[
+              { number: '10,000+', label: 'Viajantes Ativos' },
+              { number: '195', label: 'Países Cobertos' },
+              { number: '4.9/5', label: 'Avaliação Média' },
+              { number: '50+', label: 'Origens Genéticas' },
+            ].map((stat, index) => (
+              <div key={index} style={styles.stat}>
+                <div style={styles.statNumber}>{stat.number}</div>
+                <div style={styles.statLabel}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={styles.grid}>
+            {[
+              {
+                name: 'Maria Silva',
+                role: 'Designer • São Paulo, BR',
+                content: 'Descobri que tenho 60% de origem italiana e o Ancestral Travel me criou um roteiro incrível pela Toscana.',
+              },
+              {
+                name: 'Carlos Mendoza',
+                role: 'Engenheiro • Lisboa, PT',
+                content: 'Usei o modo tradicional para planejar uma viagem de 3 semanas pela Ásia. A IA entendeu perfeitamente meu estilo.',
+              },
+              {
+                name: 'Ana Rodriguez',
+                role: 'Professora • Barcelona, ES',
+                content: 'O roteiro baseado no meu DNA me levou a pequenas vilas que nem sabia que existiam. Encontrei até parentes!',
+              },
+            ].map((testimonial, index) => (
+              <div key={index} style={styles.testimonialCard}>
+                <div style={styles.testimonialHeader}>
+                  <div style={styles.avatar}>
+                    {testimonial.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div style={styles.testimonialName}>{testimonial.name}</div>
+                    <div style={styles.testimonialRole}>{testimonial.role}</div>
+                  </div>
+                </div>
+                <div style={styles.stars}>
+                  {'⭐'.repeat(5)}
+                </div>
+                <p style={styles.testimonialText}>"{testimonial.content}"</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={styles.footer}>
+        <div style={styles.sectionContainer}>
+          <div style={styles.footerGrid}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                <div style={{ ...styles.logoIcon, backgroundColor: '#2563eb' }}>🧭</div>
+                <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Ancestral Travel</span>
+              </div>
+              <p style={{ color: '#9ca3af', lineHeight: '1.6' }}>
+                A primeira plataforma do mundo que usa DNA para criar roteiros 
+                de viagem personalizados.
               </p>
             </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
 
-// Final CTA Section
-const FinalCTASection: React.FC<{ onGetStarted?: () => void }> = ({ onGetStarted }) => {
-  return (
-    <section className="section-padding bg-gradient-primary text-white">
-      <div className="container-custom text-center">
-        <h2 className="text-4xl md:text-5xl font-bold mb-6">
-          Pronto para descobrir suas origens?
-        </h2>
-        <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
-          Junte-se a milhares de viajantes que já descobriram suas raízes 
-          e criaram memórias inesquecíveis.
-        </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-          <button onClick={onGetStarted} className="btn-secondary bg-white text-primary-500 hover:bg-gray-50">
-            Começar Grátis Agora
-          </button>
-          <span className="text-white/80">
-            5 consultas grátis • Sem cartão de crédito
-          </span>
-        </div>
+            <div>
+              <h4 style={styles.footerTitle}>Produto</h4>
+              <a href="#" style={styles.footerLink}>Como Funciona</a>
+              <a href="#" style={styles.footerLink}>Modo DNA</a>
+              <a href="#" style={styles.footerLink}>Preços</a>
+            </div>
 
-        <div className="flex items-center justify-center space-x-8 text-sm opacity-80">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            <span>10,000+ usuários satisfeitos</span>
+            <div>
+              <h4 style={styles.footerTitle}>Recursos</h4>
+              <a href="#" style={styles.footerLink}>Blog</a>
+              <a href="#" style={styles.footerLink}>Guias</a>
+              <a href="#" style={styles.footerLink}>Suporte</a>
+            </div>
+
+            <div>
+              <h4 style={styles.footerTitle}>Empresa</h4>
+              <a href="#" style={styles.footerLink}>Sobre Nós</a>
+              <a href="#" style={styles.footerLink}>Carreiras</a>
+              <a href="#" style={styles.footerLink}>Contato</a>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-            <span>4.9/5 estrelas</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-            <span>Suporte 24/7</span>
+
+          <div style={styles.footerBottom}>
+            <p>© 2024 Ancestral Travel. Todos os direitos reservados.</p>
           </div>
         </div>
-      </div>
-    </section>
+      </footer>
+    </div>
   );
-};
+}
