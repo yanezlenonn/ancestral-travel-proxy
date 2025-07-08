@@ -2,6 +2,7 @@
 const nextConfig = {
   experimental: {
     appDir: true,
+    serverComponentsExternalPackages: ['pdf-parse', 'pdf-lib']
   },
   images: {
     domains: ['avatars.githubusercontent.com'],
@@ -12,5 +13,4 @@ const nextConfig = {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   },
 }
-
 module.exports = nextConfig
