@@ -1,3 +1,7 @@
+// ARQUIVO: src/components/chat/ChatInterface.tsx
+// FUNÇÃO: Interface principal adaptada para APIs existentes
+// DEPENDÊNCIAS: shadcn/ui (existente), lucide-react (instalado), APIs do Chat 1+2
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -13,21 +17,17 @@ interface Message {
   content: string;
   role: 'user' | 'assistant';
   timestamp: Date;
-  conversationId: string;
+  session_id: string;
 }
 
 interface ChatInterfaceProps {
   userId: string;
-  conversationId: string;
   dnaData?: any;
-  onNewConversation?: (conversationId: string) => void;
 }
 
 export default function ChatInterface({ 
   userId, 
-  conversationId, 
-  dnaData, 
-  onNewConversation 
+  dnaData
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -36,9 +36,17 @@ export default function ChatInterface({
   const [error, setError] = useState<string | null>(null);
   const [remainingQueries, setRemainingQueries] = useState(5);
   const [resetTime, setResetTime] = useState<Date | null>(null);
+  const [sessionId, setSessionId] = useState<string>('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Gerar sessionId único
+  useEffect(() => {
+    if (!sessionId) {
+      setSessionId(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+    }
+  }, [sessionId]);
 
   // Auto-scroll para novas mensagens
   const scrollToBottom = () => {
@@ -49,22 +57,38 @@ export default function ChatInterface({
     scrollToBottom();
   }, [messages]);
 
-  // Carregar mensagens da conversa
+  // Carregar dados iniciais
   useEffect(() => {
-    loadConversation();
-    checkRateLimit();
-  }, [conversationId]);
+    if (sessionId) {
+      loadConversation();
+      checkRateLimit();
+    }
+  }, [sessionId]);
 
   const loadConversation = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/conversations/${conversationId}`);
+      // Usar API simple-chat para carregar histórico
+      const response = await fetch(`/api/simple-chat?sessionId=${sessionId}`);
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.messages || []);
+        if (data.success && data.messages) {
+          const formattedMessages = data.messages.map((msg: any) => ({
+            id: msg.id || `${msg.role}_${msg.created_at}`,
+            content: msg.content,
+            role: msg.role,
+            timestamp: new Date(msg.created_at),
+            session_id: msg.session_id
+          }));
+          setMessages(formattedMessages);
+          
+          // Calcular queries restantes baseado no histórico
+          const userMessages = formattedMessages.filter((m: Message) => m.role === 'user');
+          setRemainingQueries(Math.max(0, 5 - userMessages.length));
+        }
       }
     } catch (err) {
-      setError('Erro ao carregar conversa');
+      console.error('Erro ao carregar conversa:', err);
     } finally {
       setIsLoading(false);
     }
@@ -72,14 +96,16 @@ export default function ChatInterface({
 
   const checkRateLimit = async () => {
     try {
+      // Usar API do Chat 1 se disponível
       const response = await fetch(`/api/users/${userId}/rate-limit`);
       if (response.ok) {
         const data = await response.json();
-        setRemainingQueries(data.remaining);
+        setRemainingQueries(data.remaining || remainingQueries);
         setResetTime(data.resetTime ? new Date(data.resetTime) : null);
       }
     } catch (err) {
-      console.error('Erro ao verificar rate limit:', err);
+      console.error('Rate limit API não disponível, usando fallback');
+      // Usar fallback baseado em mensagens locais
     }
   };
 
@@ -87,11 +113,11 @@ export default function ChatInterface({
     if (!inputMessage.trim() || isLoading || remainingQueries <= 0) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `user_${Date.now()}`,
       content: inputMessage.trim(),
       role: 'user',
       timestamp: new Date(),
-      conversationId
+      session_id: sessionId
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -101,14 +127,13 @@ export default function ChatInterface({
     setError(null);
 
     try {
-      const response = await fetch('/api/chat', {
+      // Usar API simple-chat (confirmada funcionando)
+      const response = await fetch('/api/simple-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: inputMessage.trim(),
-          conversationId,
-          userId,
-          dnaData
+          sessionId: sessionId
         })
       });
 
@@ -119,24 +144,25 @@ export default function ChatInterface({
 
       const data = await response.json();
       
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: data.response,
-        role: 'assistant',
-        timestamp: new Date(),
-        conversationId
-      };
+      if (data.success) {
+        const assistantMessage: Message = {
+          id: `assistant_${Date.now()}`,
+          content: data.message,
+          role: 'assistant',
+          timestamp: new Date(),
+          session_id: sessionId
+        };
 
-      setMessages(prev => [...prev, assistantMessage]);
-      setRemainingQueries(prev => prev - 1);
-      
-      // Atualizar reset time se fornecido
-      if (data.resetTime) {
-        setResetTime(new Date(data.resetTime));
+        setMessages(prev => [...prev, assistantMessage]);
+        setRemainingQueries(prev => Math.max(0, prev - 1));
+      } else {
+        throw new Error(data.error || 'Erro desconhecido');
       }
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao enviar mensagem');
+      // Remover mensagem do usuário em caso de erro
+      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
     } finally {
       setIsLoading(false);
       setIsTyping(false);
@@ -168,6 +194,19 @@ export default function ChatInterface({
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Ancestral Travel</h1>
+            <p className="text-sm text-gray-600">Seu especialista em viagens personalizada</p>
+          </div>
+          <div className="text-right text-sm text-gray-500">
+            <div>Sessão: {sessionId.slice(-8)}</div>
+          </div>
+        </div>
+      </div>
+
       {/* Rate Limiting Banner */}
       {remainingQueries <= 2 && (
         <div className="bg-amber-50 border-b border-amber-200 p-3">
@@ -201,6 +240,27 @@ export default function ChatInterface({
             <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
             <span className="ml-2 text-gray-600">Carregando conversa...</span>
           </div>
+        )}
+
+        {/* Welcome Message */}
+        {messages.length === 0 && !isLoading && (
+          <Card className="p-6 text-center">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+              👋 Olá! Como posso ajudar?
+            </h2>
+            <p className="text-gray-600 mb-4">
+              Sou seu especialista em viagens. Posso criar roteiros personalizados!
+            </p>
+            <div className="bg-blue-50 rounded-lg p-4 text-left">
+              <p className="font-medium text-blue-900 mb-2">💡 Exemplos:</p>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Criar roteiro de 7 dias para Paris</li>
+                <li>• Sugerir destinos para lua de mel</li>
+                <li>• Planejar viagem com orçamento limitado</li>
+                <li>• Encontrar atividades para crianças</li>
+              </ul>
+            </div>
+          </Card>
         )}
 
         {messages.map((message) => (
