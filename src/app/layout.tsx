@@ -1,7 +1,3 @@
-// ARQUIVO: src/app/layout.tsx
-// FUNÇÃO: Layout principal obrigatório para Next.js 14
-// DEPENDÊNCIAS: Nenhuma
-
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
