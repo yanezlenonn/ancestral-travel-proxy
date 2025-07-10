@@ -1,4 +1,7 @@
-// src/app/api/test/intelligent-agent/route.ts
+// ARQUIVO: src/app/api/test/intelligent-agent/route.ts
+// FUNÇÃO: Teste do agente inteligente (CORRIGIDO)
+// DEPENDÊNCIAS: IntelligentAgent, Supabase Auth
+
 import { NextRequest, NextResponse } from 'next/server';
 import { IntelligentAgent } from '@/lib/intelligent-agent';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
@@ -79,14 +82,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: false,
-      error: `Erro ao testar Intelligent Agent: ${error}`
-    });
-  }
-}: false,
       error: 'Tipo de teste não reconhecido'
     });
 
   } catch (error) {
     console.error('Erro no teste Intelligent Agent:', error);
     return NextResponse.json({
-      success
+      success: false,
+      error: `Erro ao testar Intelligent Agent: ${error}`
+    });
+  }
+}
