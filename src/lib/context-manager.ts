@@ -1,6 +1,22 @@
+// src/lib/context-manager.ts - VERSÃO COMPLETA
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import { DNAData } from './pdf-parser';
+
+// Importar DNAData de uma forma que funcione
+export interface DNAData {
+  ancestry: {
+    region: string;
+    percentage: number;
+    countries: string[];
+  }[];
+  ethnicGroups: string[];
+  haplogroups?: {
+    paternal?: string;
+    maternal?: string;
+  };
+  testProvider: 'genera' | 'myheritage' | '23andme' | 'unknown';
+  confidence: number;
+}
 
 export interface ConversationMessage {
   id: string;
@@ -33,14 +49,15 @@ export interface ConversationContext {
     messagesCount: number;
     isFreeTier: boolean;
     dailyLimit: number;
+    remainingMessages: number;
     monthlyTokens: number;
   };
 }
 
 export class ContextManager {
-  private static readonly MAX_CONTEXT_MESSAGES = 20; // Manter só as últimas 20 mensagens
+  private static readonly MAX_CONTEXT_MESSAGES = 20;
   private static readonly FREE_TIER_DAILY_LIMIT = 5;
-  private static readonly MAX_MONTHLY_TOKENS = 100000; // ~$100 em tokens
+  private static readonly MAX_MONTHLY_TOKENS = 100000;
 
   /**
    * Cria ou recupera o contexto da conversa
@@ -49,17 +66,13 @@ export class ContextManager {
     const supabase = createServerComponentClient({ cookies });
     
     try {
-      // Buscar usuário atual
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
       // Buscar mensagens da sessão
       const { data: messages } = await supabase
         .from('chat_messages')
-        .select(`
-          *,
-          dna_data:dna_uploads(*)
-        `)
+        .select('*')
         .eq('session_id', sessionId)
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
@@ -95,6 +108,7 @@ export class ContextManager {
         .single();
 
       const isFreeTier = !subscription;
+      const remainingMessages = Math.max(0, this.FREE_TIER_DAILY_LIMIT - (dailyMessages || 0));
       
       // Determinar modo do agente
       const agentMode: ConversationContext['agentMode'] = dnaUpload 
@@ -117,7 +131,8 @@ export class ContextManager {
           messagesCount: dailyMessages || 0,
           isFreeTier,
           dailyLimit: this.FREE_TIER_DAILY_LIMIT,
-          monthlyTokens: 0 // TODO: Implementar tracking de tokens
+          remainingMessages,
+          monthlyTokens: 0
         }
       };
 
@@ -142,7 +157,6 @@ export class ContextManager {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
-      // Determinar modo do agente
       const context = await this.getConversationContext(sessionId);
       const agentMode = context?.agentMode || 'TRADITIONAL_PLANNER';
 
@@ -186,7 +200,7 @@ export class ContextManager {
       const isFreeTier = !subscription;
       
       if (!isFreeTier) {
-        return { allowed: true }; // Usuários premium têm acesso ilimitado
+        return { allowed: true };
       }
 
       // Contar mensagens de hoje para usuários gratuitos
@@ -200,10 +214,13 @@ export class ContextManager {
         .eq('role', 'user')
         .gte('created_at', today.toISOString());
 
+      const remainingMessages = Math.max(0, this.FREE_TIER_DAILY_LIMIT - (dailyMessages || 0));
+
       const usage = {
         messagesCount: dailyMessages || 0,
         isFreeTier,
         dailyLimit: this.FREE_TIER_DAILY_LIMIT,
+        remainingMessages,
         monthlyTokens: 0
       };
 
@@ -224,9 +241,147 @@ export class ContextManager {
   }
 
   /**
+   * MÉTODO FALTANTE: Detecta intenção do usuário
+   */
+  static detectUserIntent(message: string): {
+    intent: string;
+    entities: any;
+    confidence: number;
+  } {
+    const lowerMessage = message.toLowerCase();
+    
+    // Planejamento de viagem
+    if (lowerMessage.includes('planejar') || lowerMessage.includes('roteiro') || lowerMessage.includes('viagem')) {
+      const budgetMatch = lowerMessage.match(/(\d+)\s*(mil|reais|r\$)/);
+      const travelersMatch = lowerMessage.match(/(\d+)\s*(pessoas?|viajantes?)/);
+      
+      return {
+        intent: 'planning',
+        entities: {
+          budget: budgetMatch ? budgetMatch[1] : null,
+          travelers: travelersMatch ? parseInt(travelersMatch[1]) : 1,
+          destination: this.extractDestination(message)
+        },
+        confidence: 0.9
+      };
+    }
+    
+    // Pergunta sobre orçamento
+    if (lowerMessage.includes('quanto custa') || lowerMessage.includes('preço') || lowerMessage.includes('orçamento')) {
+      return {
+        intent: 'budget_question',
+        entities: {
+          destination: this.extractDestination(message)
+        },
+        confidence: 0.8
+      };
+    }
+    
+    // Informação sobre destino
+    if (lowerMessage.includes('me fale sobre') || lowerMessage.includes('turismo') || lowerMessage.includes('sobre')) {
+      return {
+        intent: 'destination_info',
+        entities: {
+          destination: this.extractDestination(message)
+        },
+        confidence: 0.7
+      };
+    }
+    
+    // Modificação de roteiro
+    if (lowerMessage.includes('alterar') || lowerMessage.includes('mudar') || lowerMessage.includes('modificar')) {
+      return {
+        intent: 'modify_itinerary',
+        entities: {},
+        confidence: 0.6
+      };
+    }
+    
+    // Conversa geral
+    return {
+      intent: 'general_chat',
+      entities: {},
+      confidence: 0.3
+    };
+  }
+
+  /**
+   * MÉTODO FALTANTE: Extrai preferências do usuário
+   */
+  static extractUserPreferences(message: string): Partial<ConversationContext['userPreferences']> {
+    const preferences: Partial<ConversationContext['userPreferences']> = {};
+    const lowerMessage = message.toLowerCase();
+    
+    // Orçamento
+    const budgetMatch = lowerMessage.match(/orçamento.*?(\d+(?:\.\d+)?)\s*(mil|reais|r\$)/);
+    if (budgetMatch) {
+      preferences.budget = `${budgetMatch[1]} ${budgetMatch[2]}`;
+    }
+    
+    // Estilo de viagem
+    if (lowerMessage.includes('relaxante') || lowerMessage.includes('tranquil')) {
+      preferences.travelStyle = 'relaxante';
+    } else if (lowerMessage.includes('aventura') || lowerMessage.includes('radical')) {
+      preferences.travelStyle = 'aventura';
+    } else if (lowerMessage.includes('cultural') || lowerMessage.includes('museu') || lowerMessage.includes('história')) {
+      preferences.travelStyle = 'cultural';
+    } else if (lowerMessage.includes('gastronomi') || lowerMessage.includes('comida')) {
+      preferences.travelStyle = 'gastronômico';
+    }
+    
+    // Interesses
+    const interests: string[] = [];
+    if (lowerMessage.includes('praia')) interests.push('praias');
+    if (lowerMessage.includes('montanha')) interests.push('montanhas');
+    if (lowerMessage.includes('cidade')) interests.push('cidades');
+    if (lowerMessage.includes('natureza')) interests.push('natureza');
+    if (lowerMessage.includes('festa') || lowerMessage.includes('balada')) interests.push('vida noturna');
+    
+    if (interests.length > 0) {
+      preferences.interests = interests;
+    }
+    
+    // Destinos anteriores
+    const visitedMatch = lowerMessage.match(/já\s+(?:visitei|fui|conheço)\s+([^.!?]+)/);
+    if (visitedMatch) {
+      preferences.previousDestinations = [visitedMatch[1].trim()];
+    }
+    
+    return preferences;
+  }
+
+  /**
+   * MÉTODO FALTANTE: Gera perguntas de follow-up
+   */
+  static generateFollowUpQuestions(context: ConversationContext, lastResponse: string): string[] {
+    const questions: string[] = [];
+    
+    if (context.agentMode === 'DNA_SPECIALIST' && context.dnaData) {
+      const topRegion = context.dnaData.ancestry[0]?.region;
+      questions.push(`Gostaria de explorar mais sobre ${topRegion}?`);
+      questions.push('Prefere focar nas tradições culturais ou locais históricos?');
+    } else {
+      questions.push('Qual é seu orçamento ideal para esta viagem?');
+      questions.push('Quantos dias você tem disponível?');
+      questions.push('Prefere um roteiro mais cultural ou de aventura?');
+    }
+    
+    // Baseado no contexto da conversa
+    if (!context.userPreferences.budget) {
+      questions.push('Qual faixa de orçamento você tem em mente?');
+    }
+    
+    if (!context.userPreferences.travelStyle) {
+      questions.push('Que tipo de experiência você busca nesta viagem?');
+    }
+    
+    return questions.slice(0, 3); // Máximo 3 perguntas
+  }
+
+  /**
    * Gera prompt contextualizado para o agente
    */
-  static buildContextualPrompt(context: ConversationContext): string {
+  static buildContextualPrompt(context: ConversationContext, currentMessage?: string): string {
     const { agentMode, dnaData, messages, userPreferences } = context;
     
     let prompt = '';
@@ -283,6 +438,10 @@ INSTRUÇÕES:
       });
     }
     
+    if (currentMessage) {
+      prompt += `\n\nMENSAGEM ATUAL: ${currentMessage}`;
+    }
+    
     prompt += '\n\nRESPONDA DE FORMA NATURAL, AMIGÁVEL E DETALHADA.';
     
     return prompt;
@@ -325,37 +484,23 @@ INSTRUÇÕES:
   }
 
   /**
-   * Limpa mensagens antigas para otimizar contexto
+   * Extrai destino da mensagem
    */
-  static async cleanupOldMessages(sessionId: string): Promise<void> {
-    const supabase = createServerComponentClient({ cookies });
+  private static extractDestination(message: string): string | null {
+    const destinations = [
+      'portugal', 'espanha', 'itália', 'alemanha', 'frança', 'brasil',
+      'argentina', 'chile', 'peru', 'méxico', 'japão', 'china', 'tailândia',
+      'lisboa', 'madrid', 'roma', 'paris', 'londres', 'nova york', 'tóquio'
+    ];
     
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Manter apenas as últimas 50 mensagens por sessão
-      const { data: messages } = await supabase
-        .from('chat_messages')
-        .select('id')
-        .eq('session_id', sessionId)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (messages && messages.length === 50) {
-        const oldestKeptId = messages[messages.length - 1].id;
-        
-        await supabase
-          .from('chat_messages')
-          .delete()
-          .eq('session_id', sessionId)
-          .eq('user_id', user.id)
-          .lt('id', oldestKeptId);
+    const lowerMessage = message.toLowerCase();
+    for (const dest of destinations) {
+      if (lowerMessage.includes(dest)) {
+        return dest.charAt(0).toUpperCase() + dest.slice(1);
       }
-    } catch (error) {
-      console.error('Erro ao limpar mensagens antigas:', error);
     }
+    
+    return null;
   }
 
   /**
