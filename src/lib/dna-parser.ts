@@ -1,5 +1,5 @@
 // src/lib/dna-parser.ts
-// Parser para PDFs de testes de DNA (Genera, MyHeritage, 23andMe)
+// Parser para PDFs de testes de DNA (VERSÃO FUNCIONAL)
 
 export interface DNAData {
   ancestry: {
@@ -43,36 +43,27 @@ export class DNAParser {
   }
 
   /**
-   * Extrai texto do PDF usando PDF.js
+   * Simula extração de texto do PDF (para MVP)
+   * Em produção, seria substituído por biblioteca real
    */
-  private static async extractTextFromPDF(file: File): Promise<string> {
-    try {
-      // Para usar em browser, vamos usar uma abordagem diferente
-      // Como não temos acesso às libs Node.js no frontend
-      const arrayBuffer = await file.arrayBuffer();
-      
-      // Implementação simplificada - na prática usaríamos PDF.js
-      // Por enquanto, simulamos a extração baseada no nome do arquivo
-      const fileName = file.name.toLowerCase();
-      
-      if (fileName.includes('genera')) {
-        return this.getMockGeneraText();
-      } else if (fileName.includes('myheritage')) {
-        return this.getMockMyHeritageText();
-      } else if (fileName.includes('23andme')) {
-        return this.getMock23andMeText();
-      }
-      
-      // Texto genérico para testes
+  private static async simulateTextExtraction(file: File): Promise<string> {
+    // Simular baseado no nome do arquivo para demonstração
+    const fileName = file.name.toLowerCase();
+    
+    if (fileName.includes('genera')) {
       return this.getMockGeneraText();
-      
-    } catch (error) {
-      throw new Error('Erro ao extrair texto do PDF');
+    } else if (fileName.includes('myheritage')) {
+      return this.getMockMyHeritageText();
+    } else if (fileName.includes('23andme')) {
+      return this.getMock23andMeText();
     }
+    
+    // Texto genérico para demonstração
+    return this.getMockGeneraText();
   }
 
   /**
-   * Mock de texto do Genera para testes
+   * Mock de texto do Genera para demonstração
    */
   private static getMockGeneraText(): string {
     return `
@@ -99,7 +90,7 @@ export class DNAParser {
   }
 
   /**
-   * Mock de texto do MyHeritage para testes
+   * Mock de texto do MyHeritage para demonstração
    */
   private static getMockMyHeritageText(): string {
     return `
@@ -123,7 +114,7 @@ export class DNAParser {
   }
 
   /**
-   * Mock de texto do 23andMe para testes
+   * Mock de texto do 23andMe para demonstração
    */
   private static getMock23andMeText(): string {
     return `
@@ -365,8 +356,8 @@ export class DNAParser {
         return { success: false, error: validationError };
       }
       
-      // Extrair texto
-      const text = await this.extractTextFromPDF(file);
+      // Extrair texto (simulado para MVP)
+      const text = await this.simulateTextExtraction(file);
       
       if (!text || text.length < 50) {
         return { 
@@ -398,6 +389,9 @@ export class DNAParser {
       if (provider === 'unknown') {
         warnings.push('Provedor do teste não identificado automaticamente.');
       }
+      
+      // Para MVP, adicionar aviso sobre simulação
+      warnings.push('MVP: Usando processamento simulado para demonstração');
       
       const finalData: DNAData = {
         ancestry: parsedData.ancestry || [],
